@@ -54,13 +54,22 @@ class MainScreen(Screen):
     }
     
     MainScreen .sidebar {
-        width: 22;
+        width: 24;
         dock: left;
         padding: 1;
+        border-right: solid $primary-darken-2;
     }
     
     MainScreen .track-list-container {
         width: 1fr;
+        padding: 1;
+    }
+    
+    MainScreen .section-title {
+        text-style: bold;
+        color: $primary;
+        padding: 0 1;
+        margin-bottom: 1;
     }
     
     MainScreen CoverDisplay {
@@ -70,6 +79,22 @@ class MainScreen(Screen):
     MainScreen .now-playing-info {
         height: auto;
         margin-top: 1;
+        padding: 1;
+        background: $surface-lighten-1;
+    }
+    
+    MainScreen #now-playing-title {
+        text-style: bold;
+        color: $text;
+    }
+    
+    MainScreen #now-playing-artist {
+        color: $primary-lighten-1;
+        text-style: italic;
+    }
+    
+    MainScreen #now-playing-album {
+        color: $text-muted;
     }
     """
     
@@ -117,65 +142,108 @@ class MainScreen(Screen):
         if hasattr(app, "play_track"):
             app.play_track(event.track, event.index)
     
+    def on_track_list_track_removed(self, event: TrackList.TrackRemoved) -> None:
+        """Handle track removal from queue."""
+        app = self.app
+        if hasattr(app, "playlist_manager"):
+            # Remove from playlist manager
+            app.playlist_manager.remove_from_queue(event.index)
+            
+            # Update track list
+            track_list = self.query_one("#queue-list", TrackList)
+            tracks = app.playlist_manager.get_queue_tracks()
+            track_list.update_tracks(tracks)
+            
+            # Show notification
+            title = event.track.get("title", "Unknown")
+            self.notify(f"Removed: {title}", title="Queue")
+    
     def action_toggle_play(self) -> None:
         """Toggle play/pause."""
         app = self.app
         if hasattr(app, "toggle_play"):
             app.toggle_play()
+            state = app.player.state
+            if state.value == "playing":
+                self.notify("▶ Playing", title="Playback")
+            else:
+                self.notify("⏸ Paused", title="Playback")
     
     def action_next_track(self) -> None:
         """Play next track."""
         app = self.app
         if hasattr(app, "next_track"):
             app.next_track()
+            track = app.playlist_manager.get_current_track()
+            if track:
+                self.notify(f"⏭ {track.get('title', 'Unknown')}", title="Next Track")
     
     def action_prev_track(self) -> None:
         """Play previous track."""
         app = self.app
         if hasattr(app, "prev_track"):
             app.prev_track()
+            track = app.playlist_manager.get_current_track()
+            if track:
+                self.notify(f"⏮ {track.get('title', 'Unknown')}", title="Previous Track")
     
     def action_toggle_shuffle(self) -> None:
         """Toggle shuffle mode."""
         app = self.app
         if hasattr(app, "toggle_shuffle"):
             app.toggle_shuffle()
+            status = "ON 🔀" if app.playlist_manager.shuffle else "OFF"
+            self.notify(f"Shuffle: {status}", title="Shuffle")
     
     def action_toggle_repeat(self) -> None:
         """Toggle repeat mode."""
         app = self.app
         if hasattr(app, "toggle_repeat"):
             app.toggle_repeat()
+            mode = app.playlist_manager.repeat_mode
+            if mode.value == "off":
+                status = "OFF"
+            elif mode.value == "all":
+                status = "ALL 🔁"
+            else:
+                status = "ONE 🔂"
+            self.notify(f"Repeat: {status}", title="Repeat")
     
     def action_toggle_mute(self) -> None:
         """Toggle mute."""
         app = self.app
         if hasattr(app, "toggle_mute"):
             app.toggle_mute()
+            status = "MUTED 🔇" if app.player.is_muted else "UNMUTED 🔊"
+            self.notify(status, title="Volume")
     
     def action_volume_up(self) -> None:
         """Increase volume."""
         app = self.app
         if hasattr(app, "volume_up"):
             app.volume_up()
+            self.notify(f"Volume: {app.player.volume}%", title="Volume")
     
     def action_volume_down(self) -> None:
         """Decrease volume."""
         app = self.app
         if hasattr(app, "volume_down"):
             app.volume_down()
+            self.notify(f"Volume: {app.player.volume}%", title="Volume")
     
     def action_seek_back(self) -> None:
         """Seek backwards."""
         app = self.app
         if hasattr(app, "seek"):
             app.seek(-5)
+            self.notify("⏪ -5s", title="Seek")
     
     def action_seek_forward(self) -> None:
         """Seek forwards."""
         app = self.app
         if hasattr(app, "seek"):
             app.seek(5)
+            self.notify("⏩ +5s", title="Seek")
     
     def action_cursor_up(self) -> None:
         """Move cursor up."""

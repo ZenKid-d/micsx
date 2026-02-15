@@ -14,9 +14,11 @@ if TYPE_CHECKING:
 class TrackItem(ListItem):
     """A single track item in the list."""
     
-    def __init__(self, track: Dict[str, Any], **kwargs) -> None:
+    def __init__(self, track: Dict[str, Any], index: int = 0, is_playing: bool = False, **kwargs) -> None:
         super().__init__(**kwargs)
         self.track = track
+        self.track_index = index
+        self.is_playing = is_playing
     
     def compose(self):
         """Compose the track item."""
@@ -25,12 +27,14 @@ class TrackItem(ListItem):
         artist = track.get("artist") or "Unknown Artist"
         duration = self._format_duration(track.get("duration", 0))
         
-        # Track number if available
-        track_num = track.get("track_number")
-        if track_num:
-            label_text = f"[dim]{track_num:2d}[/] {title} [dim]- {artist}[/] [dim]{duration}[/]"
+        # Show index number
+        idx = self.track_index + 1
+        
+        if self.is_playing:
+            # Playing track - highlight with primary color
+            label_text = f"[bold cyan]▶[/] [bold cyan]{idx:2d}.[/] [bold cyan]{title}[/] [dim cyan]-[/] [italic cyan]{artist}[/] [dim cyan]{duration}[/]"
         else:
-            label_text = f"{title} [dim]- {artist}[/] [dim]{duration}[/]"
+            label_text = f"[dim]{idx:2d}.[/] {title} [dim]-[/] [italic]{artist}[/] [dim]{duration}[/]"
         
         yield Label(label_text)
     
@@ -50,6 +54,8 @@ class TrackList(Widget):
         ("enter", "select", "Select"),
         ("up", "cursor_up", "Up"),
         ("down", "cursor_down", "Down"),
+        ("x", "remove", "Remove"),
+        ("delete", "remove", "Remove"),
     ]
     
     DEFAULT_CSS = """
@@ -95,6 +101,14 @@ class TrackList(Widget):
             self.track = track
             self.index = index
     
+    class TrackRemoved(Message):
+        """Message sent when a track is removed from queue."""
+        
+        def __init__(self, track: Dict[str, Any], index: int) -> None:
+            super().__init__()
+            self.track = track
+            self.index = index
+    
     def __init__(self, tracks: Optional[List[Dict[str, Any]]] = None, **kwargs) -> None:
         super().__init__(**kwargs)
         self._tracks: List[Dict[str, Any]] = tracks or []
@@ -125,7 +139,10 @@ class TrackList(Widget):
         if self._list_view:
             self._list_view.remove()
         
-        items = [TrackItem(track) for track in tracks]
+        items = [
+            TrackItem(track, index=i, is_playing=(track.get("id") == self._playing_id))
+            for i, track in enumerate(tracks)
+        ]
         self._list_view = ListView(*items)
         self.mount(self._list_view)
         
@@ -136,8 +153,10 @@ class TrackList(Widget):
     def set_playing(self, track_id: Optional[int]) -> None:
         """Highlight the currently playing track."""
         self._playing_id = track_id
-        # Refresh to update styling
-        self.refresh()
+        
+        # Rebuild list with new playing state
+        if self._tracks:
+            self.update_tracks(self._tracks)
     
     def get_track(self, index: int) -> Optional[Dict[str, Any]]:
         """Get track by index."""
@@ -184,3 +203,17 @@ class TrackList(Widget):
     def action_cursor_down(self) -> None:
         """Move cursor down."""
         self.move_cursor_down()
+    
+    def action_remove(self) -> None:
+        """Remove current track from queue."""
+        if self._list_view and self._tracks:
+            index = self._list_view.index
+            if index is not None and 0 <= index < len(self._tracks):
+                track = self._tracks[index]
+                self.post_message(self.TrackRemoved(track, index))
+    
+    def remove_track(self, index: int) -> None:
+        """Remove track at index and refresh list."""
+        if 0 <= index < len(self._tracks):
+            self._tracks.pop(index)
+            self.update_tracks(self._tracks)

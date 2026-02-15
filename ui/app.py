@@ -173,19 +173,38 @@ class MicsxApp(App):
             screen.update_player_state(state)
     
     def _on_track_end(self) -> None:
-        """Handle track end."""
+        """Handle track end - play next track automatically.
+        
+        Called from VLC thread, so we need to use call_from_thread.
+        """
+        # Use call_from_thread to safely execute in main thread
+        try:
+            self.call_from_thread(self._handle_track_end)
+        except Exception:
+            pass
+    
+    def _handle_track_end(self) -> None:
+        """Handle track end in main thread."""
         if self.playlist_manager.repeat_mode == RepeatMode.ONE:
+            # Replay current track from beginning
+            self.player.seek(0)
             self.player.play()
         elif self.playlist_manager.has_next():
-            self.next_track()
+            # Play next track automatically
+            self.playlist_manager.next()
+            track = self.playlist_manager.get_current_track()
+            if track:
+                self.current_track = track
+                self.player.load_track(track)
+                self.player.play()
+                # Update UI
+                screen = self.screen
+                if hasattr(screen, "update_current_track"):
+                    screen.update_current_track(track)
         else:
-            if self.playlist_manager.repeat_mode == RepeatMode.ALL:
-                self.playlist_manager.go_to_first()
-                self._play_current_track()
-            else:
-                # Stop at end
-                self.player.stop()
-                self.current_track = None
+            # Stop at end of queue
+            self.player.stop()
+            self.current_track = None
     
     def _on_position_change(self, position: float, current_time: int) -> None:
         """Handle position change."""

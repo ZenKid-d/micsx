@@ -241,14 +241,15 @@ class PlaylistManager:
         return self._queue.shuffle_enabled
     
     def toggle_repeat(self) -> RepeatMode:
-        """Cycle through repeat modes.
+        """Cycle through repeat modes (OFF <-> ONE).
         
         Returns:
             New repeat mode.
         """
-        modes = [RepeatMode.OFF, RepeatMode.ALL, RepeatMode.ONE]
-        current_idx = modes.index(self._queue.repeat_mode)
-        self._queue.repeat_mode = modes[(current_idx + 1) % len(modes)]
+        if self._queue.repeat_mode == RepeatMode.OFF:
+            self._queue.repeat_mode = RepeatMode.ONE
+        else:
+            self._queue.repeat_mode = RepeatMode.OFF
         return self._queue.repeat_mode
     
     @property
@@ -322,11 +323,7 @@ class PlaylistManager:
             return False
         
         next_index = self._queue.current_index + 1
-        
-        if next_index >= len(self._queue.track_ids):
-            return self._queue.repeat_mode == RepeatMode.ALL
-        
-        return True
+        return next_index < len(self._queue.track_ids)
     
     def has_previous(self) -> bool:
         """Check if there's a previous track."""
@@ -334,11 +331,7 @@ class PlaylistManager:
             return False
         
         prev_index = self._queue.current_index - 1
-        
-        if prev_index < 0:
-            return self._queue.repeat_mode == RepeatMode.ALL
-        
-        return True
+        return prev_index >= 0
     
     def go_to_first(self) -> None:
         """Go to first track in queue."""

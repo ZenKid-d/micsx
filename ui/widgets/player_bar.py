@@ -21,36 +21,68 @@ class PlayerBar(Widget):
     DEFAULT_CSS = """
     PlayerBar {
         dock: bottom;
-        height: 3;
+        height: 5;
         width: 1fr;
-        background: $surface;
-        border-top: solid $primary;
+        background: $surface-lighten-1;
+        border-top: thick $primary;
+        padding: 1 2;
+    }
+    
+    PlayerBar .progress-row {
+        height: 1;
+        width: 1fr;
+        align: center middle;
+        margin-bottom: 1;
+    }
+    
+    PlayerBar .time-label {
+        width: 6;
+        text-align: center;
+        color: $text-muted;
+    }
+    
+    PlayerBar .progress-bar-container {
+        width: 1fr;
+        height: 1;
         padding: 0 1;
-    }
-    
-    PlayerBar .track-info {
-        width: 1fr;
-        height: 1;
-        content-align: center middle;
-    }
-    
-    PlayerBar .controls {
-        width: auto;
-        height: 1;
-    }
-    
-    PlayerBar .progress-container {
-        height: 1;
-        width: 1fr;
     }
     
     PlayerBar ProgressBar {
         height: 1;
+        width: 100%;
+        background: $surface;
+    }
+    
+    PlayerBar Bar > .bar--bar {
+        background: $surface;
+        color: $primary;
+    }
+    
+    PlayerBar .info-row {
+        height: 2;
+        width: 1fr;
+        align: center middle;
+    }
+    
+    PlayerBar .track-info {
+        width: 1fr;
+        height: 2;
+        content-align: left middle;
+    }
+    
+    PlayerBar .controls {
+        width: auto;
+        height: 2;
+        content-align: center middle;
+        padding: 0 2;
     }
     
     PlayerBar .status-icons {
         width: auto;
+        height: 2;
         text-align: right;
+        content-align: center middle;
+        padding: 0 1;
     }
     """
     
@@ -99,11 +131,14 @@ class PlayerBar(Widget):
     
     def compose(self):
         """Compose the player bar."""
-        with Horizontal(classes="progress-container"):
-            yield Static(self._format_time(self.current_time), id="time-current")
-            yield ProgressBar(total=100, show_percentage=False, id="progress")
-            yield Static(self._format_time(self.total_time), id="time-total")
+        # Progress bar row
+        with Horizontal(classes="progress-row"):
+            yield Static(self._format_time(self.current_time), classes="time-label", id="time-current")
+            with Vertical(classes="progress-bar-container"):
+                yield ProgressBar(total=100, show_percentage=False, id="progress")
+            yield Static(self._format_time(self.total_time), classes="time-label", id="time-total")
         
+        # Controls row
         with Horizontal():
             with Vertical(classes="track-info"):
                 yield Static(self._get_track_display(), id="track-display")
@@ -135,9 +170,7 @@ class PlayerBar(Widget):
         if self.shuffle:
             icons.append("🔀")
         
-        if self.repeat == RepeatMode.ALL:
-            icons.append("🔁")
-        elif self.repeat == RepeatMode.ONE:
+        if self.repeat == RepeatMode.ONE:
             icons.append("🔂")
         
         return " ".join(icons) if icons else ""

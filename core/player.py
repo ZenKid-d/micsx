@@ -68,18 +68,33 @@ class AudioPlayer:
     def _init_vlc(self) -> None:
         """Initialize VLC instance and player."""
         try:
-            # Create VLC instance with minimal options
+            # Create VLC instance with audio options
+            # Try pipewire first, then pulse, then alsa
             self._instance = vlc.Instance([
                 "--no-video",
-                "--no-xlib",
+                "--no-xlib", 
                 "--quiet",
-                "--no-ignore-config",
+                "--aout=pipewire",
             ])
             self._player = self._instance.media_player_new()
+            # Set volume after player is created
             self._player.audio_set_volume(self._volume)
+            print(f"[DEBUG] VLC initialized with pipewire, volume set to {self._volume}")
         except Exception as e:
-            self._state = PlayerState.ERROR
-            raise RuntimeError(f"Failed to initialize VLC: {e}")
+            # Fallback to pulse
+            try:
+                self._instance = vlc.Instance([
+                    "--no-video",
+                    "--no-xlib",
+                    "--quiet", 
+                    "--aout=pulse",
+                ])
+                self._player = self._instance.media_player_new()
+                self._player.audio_set_volume(self._volume)
+                print(f"[DEBUG] VLC initialized with pulse, volume set to {self._volume}")
+            except Exception as e2:
+                self._state = PlayerState.ERROR
+                raise RuntimeError(f"Failed to initialize VLC: {e} / {e2}")
     
     def load_track(self, track: Dict[str, Any]) -> bool:
         """Load a track for playback.
@@ -352,9 +367,17 @@ class AudioPlayer:
     # ==================== Position Thread ====================
     
     def _start_position_thread(self) -> None:
-        """Start the position update thread."""
+        """Start the position update thread and setup VLC events."""
         if self._position_thread and self._position_thread.is_alive():
             return
+        
+        # Setup VLC event manager for track end
+        if self._player and self._media:
+            try:
+                event_manager = self._player.event_manager()
+                event_manager.event_attach(vlc.EventType.MediaPlayerEndReached, self._vlc_track_end)
+            except Exception:
+                pass
         
         self._running = True
         self._position_thread = threading.Thread(target=self._position_loop, daemon=True)
@@ -366,6 +389,21 @@ class AudioPlayer:
         if self._position_thread:
             self._position_thread.join(timeout=0.5)
             self._position_thread = None
+    
+    def _vlc_track_end(self, event) -> None:
+        """Handle VLC track end event.
+        
+        Called from VLC thread when playback ends.
+        """
+        self._state = PlayerState.STOPPED
+        self._position = 1.0
+        self._notify_state_change()
+        
+        if self._on_track_end:
+            try:
+                self._on_track_end()
+            except Exception:
+                pass
     
     def _position_loop(self) -> None:
         """Position update loop."""

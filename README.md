@@ -1,23 +1,30 @@
 # 🎵 Micsx - CLI Music Player
 
-Кросс-платформенный музыкальный плеер для терминала с красивым интерфейсом и поддержкой обложек альбомов.
+A cross-platform terminal music player with a beautiful TUI interface and album cover support.
 
-## 🎯 Особенности
+![License](https://img.shields.io/badge/license-MIT-blue)
+![Python](https://img.shields.io/badge/python-3.10+-green)
+![Platform](https://img.shields.io/badge/platform-Linux%20%7C%20Windows-lightgrey)
 
-- 🎨 Красивый TUI интерфейс (Textual)
-- 🖼️ Отображение обложек альбомов (Kitty terminal)
-- 📁 Управление библиотекой музыки
-- 🎵 Поддержка MP3, FLAC, OGG, WAV, M4A
-- 📋 Плейлисты (создание/сохранение)
-- 🔍 Поиск по названию и исполнителю
-- ⌨️ Vim-like навигация и hotkeys
-- 🔀 Shuffle и Repeat режимы
-- 💾 SQLite база данных для метаданных
-- 🐧 Linux + 🪟 Windows поддержка
+## 🎯 Features
 
-## 📦 Установка
+- 🎨 Beautiful TUI interface (Textual)
+- 🖼️ Album cover display (Kitty terminal)
+- 📁 Music library management
+- 🎵 Support for MP3, FLAC, OGG, WAV, M4A
+- 📋 Playlists (create/save/load)
+- 🔍 Search by title and artist
+- ⌨️ Vim-like navigation and hotkeys
+- 🔀 Shuffle and Repeat modes
+- 🔔 Toast notifications for actions
+- 🎯 Playing track highlight
+- 🗑️ Remove tracks from queue
+- 💾 SQLite database for metadata
+- 🐧 Linux + 🪟 Windows support
 
-### Зависимости
+## 📦 Installation
+
+### Requirements
 
 ```bash
 # Linux (Arch)
@@ -27,79 +34,93 @@ sudo pacman -S python python-pip vlc
 sudo apt install python3 python3-pip vlc
 
 # Windows
-# Скачай и установи VLC: https://www.videolan.org/vlc/
-# Установи Python: https://www.python.org/downloads/
+# Download and install VLC: https://www.videolan.org/vlc/
+# Install Python: https://www.python.org/downloads/
 ```
 
-### Установка плеера
+### Install the Plan
 
-```bash
-# Клонируй репозиторий
-git clone https://github.com/Zen-Kid-d/micsx.git
+
+# Clone the repository
+git clone https://github.com/yourusername/micsx.git
+>>>>>>> 167b338 (0.2)
 cd micsx
 
-# Установи Python зависимости
+# Create virtual environment
+python -m venv venv
+
+# Activate venv
+source venv/bin/activate  # Linux
+# or
+.\venv\Scripts\activate  # Windows
+
+# Install dependencies
 pip install -r requirements.txt
 
-# Запусти
+# Run
 python main.py
 ```
 
-## 🎮 Управление
+## 🎮 Controls
 
-### Навигация
-| Клавиша | Действие |
-|---------|----------|
-| W / ↑ | Вверх по списку |
-| S / ↓ | Вниз по списку |
-| A / ← | Перемотка назад (5 сек) |
-| D / → | Перемотка вперёд (5 сек) |
-| Enter | Выбрать трек |
+### Navigation
+| Key | Action |
+|-----|--------|
+| W / ↑ | Move up in list |
+| S / ↓ | Move down in list |
+| A / ← | Seek backward (5 sec) |
+| D / → | Seek forward (5 sec) |
+| Enter | Select track |
 
-### Воспроизведение
-| Клавиша | Действие |
-|---------|----------|
+### Playback
+| Key | Action |
+|-----|--------|
 | Space | Play/Pause |
 | N | Next track |
 | P | Previous track |
-| R | Toggle Repeat |
-| Z | Toggle Shuffle |
+| R | Toggle Repeat (OFF/ONE) |
+| S | Toggle Shuffle |
 
-### Громкость
-| Клавиша | Действие |
-|---------|----------|
-| + / = | Увеличить громкость |
-| - | Уменьшить громкость |
+### Volume
+| Key | Action |
+|-----|--------|
+| + / = | Increase volume |
+| - | Decrease volume |
 | M | Mute/Unmute |
 
-### Другое
-| Клавиша | Действие |
-|---------|----------|
-| L | Библиотека |
-| / | Поиск |
-| Q | Выход |
+### Queue
+| Key | Action |
+|-----|--------|
+| X / Delete | Remove track from queue |
 
-## 🏗️ Архитектура
+### Other
+| Key | Action |
+|-----|--------|
+| L | Open library |
+| / | Search |
+| Q | Quit |
+
+## 🏗️ Architecture
 
 ```
 ┌─────────────────────────────────────────┐
-│         UI Layer (Textual)              │  ← Пользовательский интерфейс
+│         UI Layer (Textual)              │  ← User Interface
 │  ┌──────────┐  ┌──────────┐  ┌────────┐│
 │  │  Main    │  │ Library  │  │Playlist││
 │  │  Screen  │  │ Screen   │  │ Screen ││
 │  └──────────┘  └──────────┘  └────────┘│
 └─────────────────────────────────────────┘
-              ↕️ События / Команды
+              ↕️ Events / Commands
 ┌─────────────────────────────────────────┐
-│      Business Logic Layer               │  ← Логика приложения
+│      Business Logic Layer               │  ← Application Logic
 │  ┌──────────┐  ┌──────────┐  ┌────────┐│
 │  │  Audio   │  │ Playlist │  │ Search ││
 │  │  Player  │  │ Manager  │  │ Engine ││
 │  └──────────┘  └──────────┘  └────────┘│
 └─────────────────────────────────────────┘
-              ↕️ Запросы / Данные
+              ↕️ Queries / Data
 ┌─────────────────────────────────────────┐
-│        Data Layer                       │  ← Данные и хранилище
+│        Data Layer                       │  ← Data Storage
 │  ┌──────────┐  ┌──────────┐  ┌────────┐│
 │  │ Database │  │ Metadata │  │  File  ││
 │  │   (SQL)  │  │ (mutagen)│  │ Scanner││
@@ -107,40 +128,40 @@ python main.py
 └─────────────────────────────────────────┘
 ```
 
-## 📁 Структура проекта
+## 📁 Project Structure
 
 ```
 micsx/
-├── config/           # Конфигурация и настройки
-│   ├── settings.py   # Настройки приложения
-│   └── theme.py      # Темы оформления
-├── data/             # Работа с данными
-│   ├── database.py   # SQLite база данных
-│   ├── metadata.py   # Извлечение метаданных
-│   └── scanner.py    # Сканирование файлов
-├── core/             # Бизнес-логика
-│   ├── player.py     # Аудиоплеер (VLC)
-│   ├── playlist.py   # Управление плейлистами
-│   ├── library.py    # Управление библиотекой
-│   ├── search.py     # Поиск треков
-│   └── hotkeys.py    # Глобальные хоткеи
-├── ui/               # Пользовательский интерфейс
-│   ├── app.py        # Главное приложение
-│   ├── screens/      # Экраны
+├── config/           # Configuration and settings
+│   ├── settings.py   # Application settings
+│   └── theme.py      # Theme definitions
+├── data/             # Data handling
+│   ├── database.py   # SQLite database
+│   ├── metadata.py   # Metadata extraction
+│   └── scanner.py    # File scanning
+├── core/             # Business logic
+│   ├── player.py     # Audio player (VLC)
+│   ├── playlist.py   # Playlist management
+│   ├── library.py    # Library management
+│   ├── search.py     # Track search
+│   └── hotkeys.py    # Global hotkeys
+├── ui/               # User interface
+│   ├── app.py        # Main application
+│   ├── screens/      # Screens
 │   │   ├── main.py
 │   │   ├── library.py
 │   │   └── playlists.py
-│   └── widgets/      # Виджеты
+│   └── widgets/      # Widgets
 │       ├── track_list.py
 │       ├── player_bar.py
 │       └── cover_display.py
-├── main.py           # Точка входа
-└── requirements.txt  # Зависимости
+├── main.py           # Entry point
+└── requirements.txt  # Dependencies
 ```
 
-## 🔧 Конфигурация
+## 🔧 Configuration
 
-Файл конфигурации находится в `~/.config/micsx/settings.json`:
+Configuration file is located at `~/.config/micsx/settings.json`:
 
 ```json
 {
@@ -154,16 +175,25 @@ micsx/
 }
 ```
 
-## 🖼️ Обложки альбомов
+## 🖼️ Album Covers
 
-Для отображения обложек используйте Kitty terminal:
+For album cover display, use Kitty terminal:
 
 ```bash
-# Установка Kitty (Linux)
+# Install Kitty (Linux)
 sudo pacman -S kitty  # Arch
 sudo apt install kitty  # Ubuntu/Debian
 ```
 
-## 📝 Лицензия
+## 📝 License
 
 MIT License
+<<<<<<< HEAD
+=======
+
+## 🙏 Credits
+
+- [Textual](https://github.com/Textualize/textual) - TUI framework
+- [python-vlc](https://github.com/oaubert/python-vlc) - VLC bindings
+- [mutagen](https://github.com/quodlibet/mutagen) - Audio metadata
+>>>>>>> 167b338 (0.2)
