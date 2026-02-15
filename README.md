@@ -1,4 +1,4 @@
-# 🎵 Micsx - CLI Music Player
+# Micsx - CLI Music Player
 
 A cross-platform terminal music player with a beautiful TUI interface and album cover support.
 
@@ -6,23 +6,23 @@ A cross-platform terminal music player with a beautiful TUI interface and album 
 ![Python](https://img.shields.io/badge/python-3.10+-green)
 ![Platform](https://img.shields.io/badge/platform-Linux%20%7C%20Windows-lightgrey)
 
-## 🎯 Features
+## Features
 
-- 🎨 Beautiful TUI interface (Textual)
-- 🖼️ Album cover display (Kitty terminal)
-- 📁 Music library management
-- 🎵 Support for MP3, FLAC, OGG, WAV, M4A
-- 📋 Playlists (create/save/load)
-- 🔍 Search by title and artist
-- ⌨️ Vim-like navigation and hotkeys
-- 🔀 Shuffle and Repeat modes
-- 🔔 Toast notifications for actions
-- 🎯 Playing track highlight
-- 🗑️ Remove tracks from queue
-- 💾 SQLite database for metadata
-- 🐧 Linux + 🪟 Windows support
+-  Beautiful TUI interface (Textual)
+-  Album cover display (Kitty terminal)
+-  Music library management
+-  Support for MP3, FLAC, OGG, WAV, M4A
+-  Playlists (create/save/load)
+-  Search by title and artist
+-  Vim-like navigation and hotkeys
+-  Shuffle and Repeat modes
+-  Toast notifications for actions
+-  Playing track highlight
+-  Remove tracks from queue
+-  SQLite database for metadata
+-  Linux + 🪟 Windows support
 
-## 📦 Installation
+##  Installation
 
 ### Requirements
 
@@ -65,7 +65,7 @@ pip install -r requirements.txt
 python main.py
 ```
 
-## 🎮 Controls
+##  Controls
 
 ### Navigation
 | Key | Action |
@@ -104,7 +104,7 @@ python main.py
 | / | Search |
 | Q | Quit |
 
-## 🏗️ Architecture
+##  Architecture
 
 ```
 ┌─────────────────────────────────────────┐
@@ -132,7 +132,7 @@ python main.py
 └─────────────────────────────────────────┘
 ```
 
-## 📁 Project Structure
+##  Project Structure
 
 ```
 micsx/
@@ -163,7 +163,7 @@ micsx/
 └── requirements.txt  # Dependencies
 ```
 
-## 🔧 Configuration
+##  Configuration
 
 Configuration file is located at `~/.config/micsx/settings.json`:
 
@@ -179,7 +179,7 @@ Configuration file is located at `~/.config/micsx/settings.json`:
 }
 ```
 
-## 🖼️ Album Covers
+##  Album Covers
 
 For album cover display, use Kitty terminal:
 
@@ -189,7 +189,7 @@ sudo pacman -S kitty  # Arch
 sudo apt install kitty  # Ubuntu/Debian
 ```
 
-## 🙏 Credits
+##  Credits
 
 - [Textual](https://github.com/Textualize/textual) - TUI framework
 - [python-vlc](https://github.com/oaubert/python-vlc) - VLC bindings
