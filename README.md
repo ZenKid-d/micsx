@@ -189,15 +189,8 @@ sudo pacman -S kitty  # Arch
 sudo apt install kitty  # Ubuntu/Debian
 ```
 
-## 📝 License
-
-MIT License
-<<<<<<< HEAD
-=======
-
 ## 🙏 Credits
 
 - [Textual](https://github.com/Textualize/textual) - TUI framework
 - [python-vlc](https://github.com/oaubert/python-vlc) - VLC bindings
 - [mutagen](https://github.com/quodlibet/mutagen) - Audio metadata
->>>>>>> 167b338 (0.2)
