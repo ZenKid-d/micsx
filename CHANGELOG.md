@@ -5,6 +5,7 @@ All notable changes to Micsx will be documented in this file.
 ## [Unreleased]
 
 ### Added
+- **Audio Visualizer** - Animated visualizer in player bar with Unicode bars (▁▂▃▄▅▆▇█) that reacts to playback state
 - **Popup Notifications** - Toast notifications for player actions (play/pause, next/prev, shuffle, repeat, volume, seek)
 - **Remove from Queue** - Press `x` or `Delete` to remove selected track from queue with notification
 - **Track Index Numbers** - Display track numbers (1., 2., 3., ...) in the queue list

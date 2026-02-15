@@ -10,6 +10,7 @@ from textual.message import Message
 
 from core.player import PlayerState
 from core.playlist import RepeatMode
+from ui.widgets.audio_visualizer import MiniVisualizer
 
 if TYPE_CHECKING:
     from core.player import TrackInfo
@@ -21,11 +22,24 @@ class PlayerBar(Widget):
     DEFAULT_CSS = """
     PlayerBar {
         dock: bottom;
-        height: 5;
+        height: 6;
         width: 1fr;
         background: $surface-lighten-1;
         border-top: thick $primary;
         padding: 1 2;
+    }
+    
+    PlayerBar .visualizer-row {
+        height: 1;
+        width: 1fr;
+        align: center middle;
+        margin-bottom: 0;
+    }
+    
+    PlayerBar MiniVisualizer {
+        height: 1;
+        width: auto;
+        color: $primary;
     }
     
     PlayerBar .progress-row {
@@ -33,18 +47,18 @@ class PlayerBar(Widget):
         width: 1fr;
         align: center middle;
         margin-bottom: 1;
+        padding: 0 4;
     }
     
     PlayerBar .time-label {
-        width: 6;
+        width: 5;
         text-align: center;
         color: $text-muted;
     }
     
     PlayerBar .progress-bar-container {
-        width: 1fr;
+        width: 30;
         height: 1;
-        padding: 0 1;
     }
     
     PlayerBar ProgressBar {
@@ -131,6 +145,10 @@ class PlayerBar(Widget):
     
     def compose(self):
         """Compose the player bar."""
+        # Visualizer row
+        with Horizontal(classes="visualizer-row"):
+            yield MiniVisualizer(id="visualizer")
+        
         # Progress bar row
         with Horizontal(classes="progress-row"):
             yield Static(self._format_time(self.current_time), classes="time-label", id="time-current")
@@ -204,6 +222,9 @@ class PlayerBar(Widget):
         try:
             display = self.query_one("#controls-display", Static)
             display.update(self._get_controls_display())
+            # Update visualizer
+            visualizer = self.query_one("#visualizer", MiniVisualizer)
+            visualizer.set_playing(new_value == PlayerState.PLAYING)
         except Exception:
             pass
     

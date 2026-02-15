@@ -116,18 +116,27 @@ class AudioPlayer:
             # Stop current playback
             self.stop()
             
-            # Create new media
+            # Create new media with option to get duration
             self._media = self._instance.media_new(path)
+            # Parse media to get accurate duration
+            self._media.parse()
             self._player.set_media(self._media)
             
-            # Store track info
+            # Get duration from media (more accurate than database)
+            vlc_duration = self._media.get_duration()  # milliseconds
+            db_duration = track.get("duration", 0) * 1000  # convert to ms
+            
+            # Use VLC duration if available, fallback to database
+            actual_duration_ms = vlc_duration if vlc_duration > 0 else db_duration
+            
+            # Store track info (duration in seconds)
             self._current_track = TrackInfo(
                 id=track["id"],
                 path=path,
                 title=track.get("title") or Path(path).stem,
                 artist=track.get("artist"),
                 album=track.get("album"),
-                duration=track.get("duration", 0),
+                duration=actual_duration_ms // 1000,  # Convert to seconds
             )
             
             self._state = PlayerState.STOPPED
@@ -407,6 +416,8 @@ class AudioPlayer:
     
     def _position_loop(self) -> None:
         """Position update loop."""
+        last_time_ms = 0
+        
         while self._running and self._state == PlayerState.PLAYING:
             try:
                 if self._player and self._current_track:
@@ -414,15 +425,25 @@ class AudioPlayer:
                     duration_ms = self._current_track.duration * 1000
                     
                     if duration_ms > 0:
-                        self._position = min(1.0, time_ms / duration_ms)
+                        # Use actual time from VLC, but cap at duration
+                        # VLC sometimes reports time slightly past duration
+                        if time_ms >= duration_ms - 500:  # Within 500ms of end
+                            self._position = 1.0
+                        else:
+                            self._position = time_ms / duration_ms
                     
                     self._notify_position_change()
                     
-                    # Check if track ended
-                    if time_ms >= duration_ms and duration_ms > 0:
-                        if self._on_track_end:
-                            self._on_track_end()
-                        break
+                    # Check if track ended (time stopped advancing near end)
+                    if time_ms > 0 and time_ms == last_time_ms:
+                        # Time hasn't changed - likely track ended
+                        if time_ms >= duration_ms - 1000:
+                            self._position = 1.0
+                            if self._on_track_end:
+                                self._on_track_end()
+                            break
+                    
+                    last_time_ms = time_ms
             except Exception:
                 pass
             
