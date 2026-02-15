@@ -43,7 +43,6 @@ sudo apt install python3 python3-pip vlc
 
 # Clone the repository
 git clone https://github.com/yourusername/micsx.git
->>>>>>> 167b338 (0.2)
 cd micsx
 
 # Create virtual environment
