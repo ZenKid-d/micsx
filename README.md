@@ -35,7 +35,7 @@ sudo apt install python3 python3-pip vlc
 
 ```bash
 # Клонируй репозиторий
-git clone https://github.com/yourusername/micsx.git
+git clone https://github.com/Zen-Kid-d/micsx.git
 cd micsx
 
 # Установи Python зависимости
