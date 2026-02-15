@@ -26,7 +26,7 @@ A cross-platform terminal music player with a beautiful TUI interface and album 
 
 ### Requirements
 
-```bash
+```
 # Linux (Arch)
 sudo pacman -S python python-pip vlc
 
@@ -42,17 +42,22 @@ sudo apt install python3 python3-pip vlc
 
 
 # Clone the repository
+```
 git clone https://github.com/yourusername/micsx.git
 cd micsx
-
+```
 # Create virtual environment
+```
 python -m venv venv
+```
 
 # Activate venv
+```
 source venv/bin/activate  # Linux
 # or
 .\venv\Scripts\activate  # Windows
-
+```
+```
 # Install dependencies
 pip install -r requirements.txt
 
