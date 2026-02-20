@@ -6,3 +6,4 @@ pynput>=1.7.0
 numpy>=1.24.0
 librosa>=0.10.0
 thefuzz>=0.20.0
+yt-dlp>=2024.0.0

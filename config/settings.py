@@ -40,7 +40,12 @@ class Settings:
     # UI
     theme: str = "tokyo_night"
     show_cover_art: bool = True
-    
+
+    # YouTube
+    youtube_enabled: bool = True
+    youtube_search_max_results: int = 20
+    youtube_prefer_metadata: bool = True  # Extract metadata from YouTube
+
     # Global hotkeys
     global_hotkeys_enabled: bool = True
     hotkey_play_pause: str = "<ctrl>+<alt>+p"

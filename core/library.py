@@ -3,46 +3,58 @@
 from typing import Optional, List, Dict, Any, Callable
 from pathlib import Path
 
+from PyQt6.QtCore import QObject, pyqtSignal
+
 from config.settings import Settings
 from data.database import Database
 from data.scanner import LibraryUpdater, ScanResult
 
 
-class LibraryManager:
-    """Manage the music library."""
-    
+class LibraryManager(QObject):
+    """Manage the music library with Qt signals."""
+
+    # Qt signals for UI updates
+    scan_progress = pyqtSignal(str, int, int)  # path, current, total
+    scan_complete = pyqtSignal(object)  # ScanResult
+    library_updated = pyqtSignal()  # Library contents changed
+
     def __init__(self, database: Database, settings: Settings):
         """Initialize library manager.
-        
+
         Args:
             database: Database instance.
             settings: Application settings.
         """
+        super().__init__()  # Initialize QObject
+
         self.database = database
         self.settings = settings
         self.updater = LibraryUpdater(database, settings)
-        
-        # Callbacks
-        self._on_scan_progress: Optional[Callable[[str, int, int], None]] = None
-        self._on_scan_complete: Optional[Callable[[ScanResult], None]] = None
     
     # ==================== Scanning ====================
-    
+
     def scan_library(self) -> ScanResult:
         """Scan all music directories and update library.
-        
+
         Returns:
             ScanResult with statistics.
         """
-        return self.updater.update_library(callback=self._on_scan_progress)
-    
+        result = self.updater.update_library(callback=self._scan_progress_callback)
+        self.scan_complete.emit(result)
+        return result
+
     def scan_new_files(self) -> int:
         """Scan for new files only (no updates/removals).
-        
+
         Returns:
             Number of new tracks added.
         """
-        return self.updater.scan_new_files(callback=self._on_scan_progress)
+        count = self.updater.scan_new_files(callback=self._scan_progress_callback)
+        return count
+
+    def _scan_progress_callback(self, path: str, current: int, total: int) -> None:
+        """Internal callback to emit progress signal."""
+        self.scan_progress.emit(path, current, total)
     
     def rescan_library(self) -> ScanResult:
         """Full rescan of the library."""
@@ -149,12 +161,4 @@ class LibraryManager:
         """Get configured music directories."""
         return self.settings.music_dirs.copy()
     
-    # ==================== Callbacks ====================
-    
-    def set_on_scan_progress(self, callback: Callable[[str, int, int], None]) -> None:
-        """Set scan progress callback."""
-        self._on_scan_progress = callback
-    
-    def set_on_scan_complete(self, callback: Callable[[ScanResult], None]) -> None:
-        """Set scan complete callback."""
-        self._on_scan_complete = callback
+    # ==================== Callbacks (removed - using Qt signals now) ====================

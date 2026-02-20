@@ -32,6 +32,7 @@ class MainScreen(Screen):
         Binding("d", "seek_forward", "→ 5s"),
         Binding("/", "search", "Search"),
         Binding("l", "go_library", "Library"),
+        Binding("y", "youtube_search", "YouTube"),
         Binding("q", "quit", "Quit"),
         # Vim-style navigation
         Binding("w", "cursor_up", "Up", show=False),
@@ -259,7 +260,16 @@ class MainScreen(Screen):
         """Open search screen."""
         from .search import SearchScreen
         self.app.push_screen(SearchScreen())
-    
+
+    def action_youtube_search(self) -> None:
+        """Open YouTube search screen."""
+        app = self.app
+        if hasattr(app, "youtube_client") and app.youtube_client:
+            from .youtube_search import YouTubeSearchScreen
+            self.app.push_screen(YouTubeSearchScreen())
+        else:
+            self.notify("YouTube integration is disabled", title="YouTube", severity="error")
+
     def action_go_library(self) -> None:
         """Go to library screen."""
         from .library import LibraryScreen

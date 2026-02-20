@@ -16,6 +16,7 @@ from core.playlist import PlaylistManager, RepeatMode
 from core.library import LibraryManager
 from core.search import SearchEngine
 from core.hotkeys import GlobalHotkeyManager
+from core.youtube import YouTubeClient
 from ui.screens.main import MainScreen
 
 
@@ -68,7 +69,15 @@ class MicsxApp(App):
         self.library_manager = LibraryManager(self.db, self.settings)
         self.playlist_manager = PlaylistManager(self.db)
         self.search_engine = SearchEngine(self.db)
-        
+
+        # Initialize YouTube client if enabled
+        self.youtube_client: Optional[YouTubeClient] = None
+        if self.settings.youtube_enabled:
+            try:
+                self.youtube_client = YouTubeClient()
+            except Exception:
+                pass
+
         # Initialize player
         self.player = AudioPlayer()
         self._setup_player_callbacks()
@@ -317,7 +326,86 @@ class MicsxApp(App):
         self.playlist_manager.clear()
         self.playlist_manager.add_tracks([track])
         self.play_track(track, 0)
-    
+
+    def search_youtube(self, query: str) -> list:
+        """Search YouTube videos.
+
+        Args:
+            query: Search query string.
+
+        Returns:
+            List of video information dictionaries.
+        """
+        if not self.youtube_client:
+            return []
+        return self.youtube_client.search(query, self.settings.youtube_search_max_results)
+
+    def play_youtube_track(self, video_info: Dict[str, Any]) -> None:
+        """Add YouTube track to library and play.
+
+        Args:
+            video_info: Video information dictionary from YouTubeClient.
+        """
+        if not self.youtube_client:
+            return
+
+        video_id = video_info.get('video_id')
+        if not video_id:
+            return
+
+        # Check if track already exists in database
+        if self.db.track_exists_youtube(video_id):
+            # Load existing track
+            tracks = self.db.get_youtube_tracks()
+            track = next((t for t in tracks if t.get('source_id') == video_id), None)
+            if track:
+                # Update stream URL (it expires)
+                track['stream_url'] = video_info.get('stream_url')
+                # Play it
+                self.playlist_manager.clear()
+                self.playlist_manager.add_track(track)
+                self.play_track(track, 0)
+                return
+
+        # Create track data for database
+        track_data = {
+            'path': f"youtube:{video_id}",
+            'title': video_info.get('title', 'Unknown Title'),
+            'artist': video_info.get('uploader', 'Unknown'),
+            'album': 'YouTube',
+            'album_artist': None,
+            'duration': video_info.get('duration', 0),
+            'track_number': None,
+            'disc_number': None,
+            'genre': None,
+            'year': None,
+            'cover_embedded': 0,
+            'cover_external': None,
+            'source_type': 'youtube',
+            'source_id': video_id,
+            'source_url': video_info.get('url', ''),
+            'thumbnail_url': video_info.get('thumbnail', ''),
+            'stream_url': video_info.get('stream_url', ''),
+            'bitrate': None,
+            'sample_rate': None,
+            'channels': None,
+            'file_size': None,
+            'file_modified': None,
+        }
+
+        # Save to database
+        track_id = self.db.insert_track(track_data)
+        if track_id:
+            track_data['id'] = track_id
+
+            # Add to playlist and play
+            self.playlist_manager.clear()
+            self.playlist_manager.add_track(track_data)
+            self.play_track(track_data, 0)
+
+            # Update search engine index
+            self.search_engine.rebuild_index()
+
     def action_library(self) -> None:
         """Open library screen."""
         from ui.screens.library import LibraryScreen

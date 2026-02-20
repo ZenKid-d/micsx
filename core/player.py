@@ -8,6 +8,7 @@ from enum import Enum
 from dataclasses import dataclass
 
 import vlc
+from PyQt6.QtCore import QObject, pyqtSignal
 
 from core.audio_analyzer import AudioAnalyzer
 
@@ -32,15 +33,24 @@ class TrackInfo:
     duration: int  # seconds
 
 
-class AudioPlayer:
-    """VLC-based audio player."""
-    
+class AudioPlayer(QObject):
+    """VLC-based audio player with Qt signals."""
+
+    # Qt signals for UI updates
+    state_changed = pyqtSignal(object)  # PlayerState
+    position_changed = pyqtSignal(float, int)  # position (0.0-1.0), current_seconds
+    track_loaded = pyqtSignal(dict)  # Track dictionary
+    volume_changed = pyqtSignal(int)  # Volume level
+    mute_changed = pyqtSignal(bool)  # Mute state
+
     def __init__(self, settings=None):
         """Initialize the audio player.
-        
+
         Args:
             settings: Application settings instance.
         """
+        super().__init__()  # Initialize QObject
+
         self.settings = settings
         self._volume = settings.volume if settings else 80
         
@@ -55,9 +65,7 @@ class AudioPlayer:
         self._position: float = 0.0  # 0.0 to 1.0
         self._muted: bool = False
         
-        # Callbacks
-        self._on_state_change: Optional[Callable[[PlayerState], None]] = None
-        self._on_position_change: Optional[Callable[[float, int], None]] = None
+        # Callbacks (kept for backward compatibility during migration)
         self._on_track_end: Optional[Callable[[], None]] = None
         
         # Threading
@@ -109,48 +117,64 @@ class AudioPlayer:
     
     def load_track(self, track: Dict[str, Any]) -> bool:
         """Load a track for playback.
-        
+
         Args:
             track: Track dictionary from database.
-            
+
         Returns:
             True if successful, False otherwise.
         """
         if not self._instance or not self._player:
             return False
-        
-        path = track.get("path")
-        if not path or not Path(path).exists():
-            return False
-        
+
+        source_type = track.get("source_type", "local")
+
         try:
             # Stop current playback
             self.stop()
-            
-            # Create new media with option to get duration
-            self._media = self._instance.media_new(path)
+
+            # Handle different source types
+            if source_type == "youtube":
+                # YouTube streaming - use stream_url or source_url
+                url = track.get("stream_url") or track.get("source_url")
+                if not url:
+                    return False
+
+                # Create media from URL
+                self._media = self._instance.media_new(url)
+            else:
+                # Local file
+                path = track.get("path")
+                if not path or not Path(path).exists():
+                    return False
+
+                # Create new media with option to get duration
+                self._media = self._instance.media_new(path)
+
             # Parse media to get accurate duration
             self._media.parse()
             self._player.set_media(self._media)
-            
+
             # Get duration from media (more accurate than database)
             vlc_duration = self._media.get_duration()  # milliseconds
             db_duration = track.get("duration", 0) * 1000  # convert to ms
-            
+
             # Use VLC duration if available, fallback to database
             actual_duration_ms = vlc_duration if vlc_duration > 0 else db_duration
-            
+
             # Store track info (duration in seconds)
+            path = track.get("path", "")
             self._current_track = TrackInfo(
                 id=track["id"],
                 path=path,
-                title=track.get("title") or Path(path).stem,
+                title=track.get("title") or Path(path).stem if path else "Unknown",
                 artist=track.get("artist"),
                 album=track.get("album"),
                 duration=actual_duration_ms // 1000,  # Convert to seconds
             )
-            
+
             self._state = PlayerState.STOPPED
+            self.track_loaded.emit(track)
             return True
         except Exception as e:
             self._state = PlayerState.ERROR
@@ -158,44 +182,44 @@ class AudioPlayer:
     
     def play(self) -> bool:
         """Start or resume playback.
-        
+
         Returns:
             True if successful, False otherwise.
         """
         if not self._player:
             return False
-        
+
         if self._state == PlayerState.PLAYING:
             return True
-        
+
         try:
             if self._player.play() == 0:
                 self._state = PlayerState.PLAYING
                 self._start_position_thread()
-                self._notify_state_change()
+                self.state_changed.emit(self._state)
                 return True
         except Exception:
             pass
-        
+
         return False
     
     def pause(self) -> bool:
         """Pause playback.
-        
+
         Returns:
             True if successful, False otherwise.
         """
         if not self._player or self._state != PlayerState.PLAYING:
             return False
-        
+
         try:
             self._player.pause()
             self._state = PlayerState.PAUSED
-            self._notify_state_change()
+            self.state_changed.emit(self._state)
             return True
         except Exception:
             pass
-        
+
         return False
     
     def toggle_pause(self) -> bool:
@@ -214,11 +238,11 @@ class AudioPlayer:
         """Stop playback."""
         if self._player:
             self._player.stop()
-        
+
         self._stop_position_thread()
         self._state = PlayerState.STOPPED
         self._position = 0.0
-        self._notify_state_change()
+        self.state_changed.emit(self._state)
     
     def seek(self, position: float) -> bool:
         """Seek to position.
@@ -275,6 +299,7 @@ class AudioPlayer:
         self._volume = max(0, min(100, value))
         if self._player:
             self._player.audio_set_volume(self._volume)
+        self.volume_changed.emit(self._volume)
     
     def volume_up(self, amount: int = 5) -> int:
         """Increase volume.
@@ -302,13 +327,14 @@ class AudioPlayer:
     
     def mute(self) -> bool:
         """Toggle mute.
-        
+
         Returns:
             True if now muted, False if unmuted.
         """
         if self._player:
             self._player.audio_toggle_mute()
             self._muted = self._player.audio_get_mute()
+            self.mute_changed.emit(self._muted)
             return self._muted
         return False
     
@@ -392,35 +418,10 @@ class AudioPlayer:
         return self._analyzer.is_analyzed if self._analyzer else False
     
     # ==================== Callbacks ====================
-    
-    def set_on_state_change(self, callback: Callable[[PlayerState], None]) -> None:
-        """Set state change callback."""
-        self._on_state_change = callback
-    
-    def set_on_position_change(self, callback: Callable[[float, int], None]) -> None:
-        """Set position change callback."""
-        self._on_position_change = callback
-    
+
     def set_on_track_end(self, callback: Callable[[], None]) -> None:
-        """Set track end callback."""
+        """Set track end callback (kept for backward compatibility)."""
         self._on_track_end = callback
-    
-    def _notify_state_change(self) -> None:
-        """Notify state change callback."""
-        if self._on_state_change:
-            try:
-                self._on_state_change(self._state)
-            except Exception:
-                pass
-    
-    def _notify_position_change(self) -> None:
-        """Notify position change callback."""
-        if self._on_position_change:
-            try:
-                current, total = self.get_position_info()
-                self._on_position_change(self._position, current)
-            except Exception:
-                pass
     
     # ==================== Position Thread ====================
     
@@ -450,13 +451,13 @@ class AudioPlayer:
     
     def _vlc_track_end(self, event) -> None:
         """Handle VLC track end event.
-        
+
         Called from VLC thread when playback ends.
         """
         self._state = PlayerState.STOPPED
         self._position = 1.0
-        self._notify_state_change()
-        
+        self.state_changed.emit(self._state)
+
         if self._on_track_end:
             try:
                 self._on_track_end()
@@ -466,13 +467,13 @@ class AudioPlayer:
     def _position_loop(self) -> None:
         """Position update loop."""
         last_time_ms = 0
-        
+
         while self._running and self._state == PlayerState.PLAYING:
             try:
                 if self._player and self._current_track:
                     time_ms = self._player.get_time()
                     duration_ms = self._current_track.duration * 1000
-                    
+
                     if duration_ms > 0:
                         # Use actual time from VLC, but cap at duration
                         # VLC sometimes reports time slightly past duration
@@ -480,9 +481,11 @@ class AudioPlayer:
                             self._position = 1.0
                         else:
                             self._position = time_ms / duration_ms
-                    
-                    self._notify_position_change()
-                    
+
+                    # Emit position signal (thread-safe)
+                    current, total = self.get_position_info()
+                    self.position_changed.emit(self._position, current)
+
                     # Check if track ended (time stopped advancing near end)
                     if time_ms > 0 and time_ms == last_time_ms:
                         # Time hasn't changed - likely track ended
@@ -491,11 +494,11 @@ class AudioPlayer:
                             if self._on_track_end:
                                 self._on_track_end()
                             break
-                    
+
                     last_time_ms = time_ms
             except Exception:
                 pass
-            
+
             time.sleep(0.1)
     
     # ==================== Cleanup ====================

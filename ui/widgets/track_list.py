@@ -26,20 +26,25 @@ class TrackItem(ListItem):
         title = track.get("title") or "Unknown Title"
         artist = track.get("artist") or "Unknown Artist"
         duration = self._format_duration(track.get("duration", 0))
-        
+
         # Show index number
         idx = self.track_index + 1
-        
+
+        # Check if this is a YouTube track
+        source_type = track.get("source_type", "local")
+        source_indicator = "📺 " if source_type == "youtube" else ""
+
         if self.is_playing:
             # Playing track - highlight with primary color
-            label_text = f"[bold cyan]▶[/] [bold cyan]{idx:2d}.[/] [bold cyan]{title}[/] [dim cyan]-[/] [italic cyan]{artist}[/] [dim cyan]{duration}[/]"
+            label_text = f"[bold cyan]▶[/] [bold cyan]{idx:2d}.[/] {source_indicator}[bold cyan]{title}[/] [dim cyan]-[/] [italic cyan]{artist}[/] [dim cyan]{duration}[/]"
         else:
-            label_text = f"[dim]{idx:2d}.[/] {title} [dim]-[/] [italic]{artist}[/] [dim]{duration}[/]"
-        
+            label_text = f"[dim]{idx:2d}.[/] {source_indicator}{title} [dim]-[/] [italic]{artist}[/] [dim]{duration}[/]"
+
         yield Label(label_text)
     
     def _format_duration(self, seconds: int) -> str:
         """Format duration as M:SS."""
+        seconds = int(seconds)
         if seconds <= 0:
             return "0:00"
         minutes = seconds // 60

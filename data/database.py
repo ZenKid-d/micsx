@@ -60,11 +60,31 @@ class Database:
                     channels INTEGER,
                     file_size INTEGER,
                     file_modified REAL,
+                    source_type TEXT DEFAULT 'local',
+                    source_id TEXT,
+                    source_url TEXT,
+                    thumbnail_url TEXT,
                     created_at TEXT NOT NULL,
                     updated_at TEXT NOT NULL
                 )
             """)
-            
+
+            # Migration: Add YouTube support columns if they don't exist
+            try:
+                cursor = conn.execute("PRAGMA table_info(tracks)")
+                columns = [row[1] for row in cursor.fetchall()]
+
+                if 'source_type' not in columns:
+                    conn.execute("ALTER TABLE tracks ADD COLUMN source_type TEXT DEFAULT 'local'")
+                if 'source_id' not in columns:
+                    conn.execute("ALTER TABLE tracks ADD COLUMN source_id TEXT")
+                if 'source_url' not in columns:
+                    conn.execute("ALTER TABLE tracks ADD COLUMN source_url TEXT")
+                if 'thumbnail_url' not in columns:
+                    conn.execute("ALTER TABLE tracks ADD COLUMN thumbnail_url TEXT")
+            except Exception:
+                pass  # Table might be newly created with all columns
+
             # Playlists table
             conn.execute("""
                 CREATE TABLE IF NOT EXISTS playlists (
@@ -129,6 +149,7 @@ class Database:
                         cover_embedded, cover_external,
                         bitrate, sample_rate, channels,
                         file_size, file_modified,
+                        source_type, source_id, source_url, thumbnail_url,
                         created_at, updated_at
                     ) VALUES (
                         :path, :title, :artist, :album, :album_artist, :duration,
@@ -136,6 +157,7 @@ class Database:
                         :cover_embedded, :cover_external,
                         :bitrate, :sample_rate, :channels,
                         :file_size, :file_modified,
+                        :source_type, :source_id, :source_url, :thumbnail_url,
                         :created_at, :updated_at
                     )
                 """, track_data)
@@ -175,6 +197,10 @@ class Database:
                     channels = :channels,
                     file_size = :file_size,
                     file_modified = :file_modified,
+                    source_type = :source_type,
+                    source_id = :source_id,
+                    source_url = :source_url,
+                    thumbnail_url = :thumbnail_url,
                     updated_at = :updated_at
                 WHERE path = :path
             """, track_data)
@@ -231,7 +257,33 @@ class Database:
         with self._get_connection() as conn:
             cursor = conn.execute("SELECT COUNT(*) FROM tracks")
             return cursor.fetchone()[0]
-    
+
+    def get_youtube_tracks(self) -> List[Dict[str, Any]]:
+        """Get all YouTube tracks."""
+        with self._get_connection() as conn:
+            cursor = conn.execute("""
+                SELECT * FROM tracks
+                WHERE source_type = 'youtube'
+                ORDER BY artist, title
+            """)
+            return [dict(row) for row in cursor.fetchall()]
+
+    def track_exists_youtube(self, video_id: str) -> bool:
+        """Check if a YouTube track already exists in database.
+
+        Args:
+            video_id: YouTube video ID.
+
+        Returns:
+            True if track exists, False otherwise.
+        """
+        with self._get_connection() as conn:
+            cursor = conn.execute("""
+                SELECT COUNT(*) FROM tracks
+                WHERE source_type = 'youtube' AND source_id = ?
+            """, (video_id,))
+            return cursor.fetchone()[0] > 0
+
     # ==================== Playlist Operations ====================
     
     def create_playlist(self, name: str, description: str = "") -> Optional[int]:
