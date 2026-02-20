@@ -256,9 +256,9 @@ class MainScreen(Screen):
         track_list.move_cursor_down()
     
     def action_search(self) -> None:
-        """Open search."""
-        # TODO: Implement search
-        pass
+        """Open search screen."""
+        from .search import SearchScreen
+        self.app.push_screen(SearchScreen())
     
     def action_go_library(self) -> None:
         """Go to library screen."""
@@ -290,6 +290,15 @@ class MainScreen(Screen):
         """Update volume display."""
         player_bar = self.query_one("#player-bar", PlayerBar)
         player_bar.volume = volume
+    
+    def update_spectrum(self, spectrum: list) -> None:
+        """Update spectrum visualizer.
+        
+        Args:
+            spectrum: List of 20 normalized band values (0.0 - 1.0).
+        """
+        player_bar = self.query_one("#player-bar", PlayerBar)
+        player_bar.update_spectrum(spectrum)
     
     def update_current_track(self, track: dict) -> None:
         """Update current track display."""

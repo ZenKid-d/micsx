@@ -3,5 +3,6 @@
 from .main import MainScreen
 from .library import LibraryScreen
 from .playlists import PlaylistsScreen
+from .search import SearchScreen
 
-__all__ = ["MainScreen", "LibraryScreen", "PlaylistsScreen"]
+__all__ = ["MainScreen", "LibraryScreen", "PlaylistsScreen", "SearchScreen"]

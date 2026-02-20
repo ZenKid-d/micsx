@@ -148,10 +148,10 @@ class MicsxApp(App):
             self.hotkey_manager = None
     
     async def _update_progress_loop(self) -> None:
-        """Update progress bar periodically."""
+        """Update progress bar and spectrum periodically."""
         while True:
             try:
-                await asyncio.sleep(0.5)
+                await asyncio.sleep(0.05)  # 20 FPS for smooth visualization
                 
                 if self.player.state == PlayerState.PLAYING:
                     position = self.player.position
@@ -161,6 +161,11 @@ class MicsxApp(App):
                     screen = self.screen
                     if hasattr(screen, "update_player_position"):
                         screen.update_player_position(position, current_time)
+                    
+                    # Update spectrum visualizer
+                    if hasattr(screen, "update_spectrum"):
+                        spectrum = self.player.get_spectrum()
+                        screen.update_spectrum(spectrum)
             except asyncio.CancelledError:
                 break
             except Exception:
@@ -224,6 +229,9 @@ class MicsxApp(App):
         # Load and play
         self.player.load_track(track)
         self.player.play()
+        
+        # Start analyzing track for visualization
+        self.player.analyze_track()
         
         # Update current index
         self.playlist_manager.current_index = index

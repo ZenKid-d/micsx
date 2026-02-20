@@ -1,8 +1,8 @@
-"""Audio visualizer widget with simulated animation."""
+"""Audio visualizer widget with real-time spectrum display."""
 
 import random
 import math
-from typing import List
+from typing import List, Optional
 
 from textual.widget import Widget
 from textual.reactive import reactive
@@ -34,7 +34,6 @@ class AudioVisualizer(Widget):
     MAX_HEIGHT = 8  # Max height in Unicode block levels
     
     # Unicode block characters for different heights (bottom to top)
-    # Using lower half block and full block combinations
     BLOCK_CHARS = [' ', '▁', '▂', '▃', '▄', '▅', '▆', '▇', '█']
     
     def __init__(self, **kwargs) -> None:
@@ -160,7 +159,8 @@ class AudioVisualizer(Widget):
 class MiniVisualizer(Widget):
     """Compact single-line visualizer for player bar.
     
-    A simpler version that fits in a single line.
+    Supports real-time spectrum data from AudioAnalyzer
+    with smooth interpolation between frames.
     """
     
     DEFAULT_CSS = """
@@ -183,11 +183,19 @@ class MiniVisualizer(Widget):
         self._frame = 0
         self._seed = random.randint(0, 10000)
         self._animation_timer = None
+        
+        # Current interpolated heights
         self._bar_heights: List[float] = [0.0] * self.NUM_BARS
+        
+        # Target heights from spectrum data
+        self._target_heights: List[float] = [0.0] * self.NUM_BARS
+        
+        # Current time position in ms (for spectrum lookup)
+        self._current_time_ms: int = 0
     
     def on_mount(self) -> None:
         """Start animation."""
-        self._animation_timer = self.set_interval(0.08, self._update_frame)
+        self._animation_timer = self.set_interval(0.05, self._update_frame)
     
     def on_unmount(self) -> None:
         """Stop animation."""
@@ -195,35 +203,66 @@ class MiniVisualizer(Widget):
             self._animation_timer.stop()
     
     def _update_frame(self) -> None:
-        """Update frame."""
+        """Update frame with smooth interpolation."""
         self._frame += 1
         
-        if self.is_playing:
-            # Generate animated bars
-            for i in range(self.NUM_BARS):
-                phase = self._frame * 0.15
-                value = math.sin(phase + i * 0.4 + self._seed) * 0.5 + 0.5
-                value += math.sin(phase * 1.3 + i * 0.2) * 0.25
-                value += (random.random() - 0.5) * 0.3
-                value = max(0, min(1, value))
-                target = int(value * (len(self.BLOCK_CHARS) - 1))
-                # Smooth interpolation
-                self._bar_heights[i] += (target - self._bar_heights[i]) * 0.3
-        else:
-            # Idle animation - subtle wave
-            for i in range(self.NUM_BARS):
-                phase = self._frame * 0.05
-                value = math.sin(phase + i * 0.3) * 0.15 + 0.15
-                target = int(value * (len(self.BLOCK_CHARS) - 1))
-                self._bar_heights[i] += (target - self._bar_heights[i]) * 0.2
+        # Smooth interpolation towards target heights
+        for i in range(self.NUM_BARS):
+            diff = self._target_heights[i] - self._bar_heights[i]
+            # Faster interpolation when playing, slower when idle
+            speed = 0.5 if self.is_playing else 0.15
+            self._bar_heights[i] += diff * speed
         
         self.refresh()
     
     def set_playing(self, playing: bool) -> None:
-        """Set playing state."""
+        """Set playing state.
+        
+        Args:
+            playing: Whether audio is playing.
+        """
         self.is_playing = playing
         if playing:
             self._seed = random.randint(0, 10000)
+    
+    def update_spectrum(self, spectrum: Optional[List[float]], time_ms: int = 0) -> None:
+        """Update visualizer with spectrum data.
+        
+        Args:
+            spectrum: List of 20 normalized band values (0.0 - 1.0).
+            time_ms: Current playback position in milliseconds.
+        """
+        self._current_time_ms = time_ms
+        
+        if spectrum and len(spectrum) == self.NUM_BARS:
+            # Use real spectrum data - map to character indices
+            for i, value in enumerate(spectrum):
+                # Scale to block character range
+                target = value * (len(self.BLOCK_CHARS) - 1)
+                self._target_heights[i] = target
+        elif self.is_playing:
+            # Fallback to simulated animation when no spectrum data
+            self._generate_simulated_frame()
+        else:
+            # Idle animation
+            self._generate_idle_frame()
+    
+    def _generate_simulated_frame(self) -> None:
+        """Generate simulated spectrum when playing but no data."""
+        for i in range(self.NUM_BARS):
+            phase = self._frame * 0.15
+            value = math.sin(phase + i * 0.4 + self._seed) * 0.5 + 0.5
+            value += math.sin(phase * 1.3 + i * 0.2) * 0.25
+            value += (random.random() - 0.5) * 0.3
+            value = max(0, min(1, value))
+            self._target_heights[i] = value * (len(self.BLOCK_CHARS) - 1)
+    
+    def _generate_idle_frame(self) -> None:
+        """Generate subtle idle animation."""
+        for i in range(self.NUM_BARS):
+            phase = self._frame * 0.05
+            value = math.sin(phase + i * 0.3) * 0.15 + 0.15
+            self._target_heights[i] = value * (len(self.BLOCK_CHARS) - 1)
     
     def render(self) -> str:
         """Render mini visualizer."""

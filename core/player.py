@@ -3,11 +3,13 @@
 import time
 import threading
 from pathlib import Path
-from typing import Optional, Callable, Dict, Any
+from typing import Optional, Callable, Dict, Any, List
 from enum import Enum
 from dataclasses import dataclass
 
 import vlc
+
+from core.audio_analyzer import AudioAnalyzer
 
 
 class PlayerState(Enum):
@@ -62,8 +64,17 @@ class AudioPlayer:
         self._position_thread: Optional[threading.Thread] = None
         self._running = False
         
+        # Audio analyzer for visualization
+        self._analyzer: Optional[AudioAnalyzer] = None
+        
         # Initialize VLC
         self._init_vlc()
+        
+        # Initialize audio analyzer
+        try:
+            self._analyzer = AudioAnalyzer()
+        except Exception:
+            pass
     
     def _init_vlc(self) -> None:
         """Initialize VLC instance and player."""
@@ -341,6 +352,44 @@ class AudioPlayer:
             total = self._current_track.duration
             return (current, total)
         return (0, 0)
+    
+    def get_position_ms(self) -> int:
+        """Get current position in milliseconds.
+        
+        Returns:
+            Position in milliseconds.
+        """
+        if self._current_track:
+            return int(self._position * self._current_track.duration * 1000)
+        return 0
+    
+    # ==================== Spectrum Analysis ====================
+    
+    def analyze_track(self) -> None:
+        """Start analyzing current track for visualization."""
+        if self._analyzer and self._current_track:
+            self._analyzer.analyze_file(self._current_track.path)
+    
+    def get_spectrum(self) -> List[float]:
+        """Get spectrum data for current playback position.
+        
+        Returns:
+            List of 20 band values (0.0 - 1.0).
+        """
+        if self._analyzer:
+            time_ms = self.get_position_ms()
+            return self._analyzer.get_spectrum_at_time(time_ms)
+        return [0.1] * 20
+    
+    @property
+    def is_analyzing(self) -> bool:
+        """Check if track is being analyzed."""
+        return self._analyzer.is_analyzing if self._analyzer else False
+    
+    @property
+    def is_spectrum_ready(self) -> bool:
+        """Check if spectrum data is ready."""
+        return self._analyzer.is_analyzed if self._analyzer else False
     
     # ==================== Callbacks ====================
     

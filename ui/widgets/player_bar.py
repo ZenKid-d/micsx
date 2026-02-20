@@ -288,3 +288,15 @@ class PlayerBar(Widget):
             self.total_time = 0
             self.current_time = 0
             self.position = 0.0
+    
+    def update_spectrum(self, spectrum: list) -> None:
+        """Update visualizer with spectrum data.
+        
+        Args:
+            spectrum: List of 20 normalized band values (0.0 - 1.0).
+        """
+        try:
+            visualizer = self.query_one("#visualizer", MiniVisualizer)
+            visualizer.update_spectrum(spectrum, self.current_time * 1000)
+        except Exception:
+            pass

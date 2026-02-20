@@ -3,3 +3,6 @@ python-vlc>=3.0.0
 mutagen>=1.47.0
 pillow>=10.0.0
 pynput>=1.7.0
+numpy>=1.24.0
+librosa>=0.10.0
+thefuzz>=0.20.0
